@@ -1,0 +1,27 @@
+syntax = "proto3";
+package pb;
+
+message ChatMessage {
+    int64 sequence = 1;
+    string sender = 2;
+    string timestamp = 3;
+    string message = 4;
+}
+
+message PingRequest {
+    int64 sequence = 1;
+    string sender = 2;
+    int64 ttl = 3;
+    bytes payload = 15;
+}
+
+message PingReply {
+    int64 sequence = 1;
+    string receiver = 2;
+    PingRequest echo = 3;
+}
+
+service Ramble {
+    rpc Chat (stream ChatMessage) returns (stream ChatMessage) {}
+    rpc Ping (stream PingRequest) returns (PingReply) {}
+}
