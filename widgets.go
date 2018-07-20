@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"strings"
-	"time"
+	"sync"
 
 	"github.com/bbengfort/ramble/pb"
 	"github.com/jroimartin/gocui"
@@ -25,9 +25,9 @@ var (
 	helpbox  *HelpWidget
 )
 
-// NewLayout creates the messages and chatbox widgets then sets the layout
+// CreateLayout creates the messages and chatbox widgets then sets the layout
 // manager on the GUI application.
-func NewLayout(g *gocui.Gui) {
+func (c *Console) CreateLayout() {
 	messages = new(Messages)
 	messages.name = MsgsView
 	messages.lines = make([]*pb.ChatMessage, 0)
@@ -39,22 +39,28 @@ func NewLayout(g *gocui.Gui) {
 	helpbox = &HelpWidget{text: "TAB: toggle view | CTRL+C: exit"}
 	helpbox.name = HelpView
 
-	g.SetManager(messages, chatbox, helpbox)
+	c.cui.SetManager(messages, chatbox, helpbox)
 }
 
 //===========================================================================
 // Widget Implementation
 //===========================================================================
 
-// Widget implements a simple GoCUI box widget
-type Widget struct {
+// Widget implements a simple GoCUI box widget as well as the gocui.Manager
+// interface for a quick implementation of boxes in the application.
+type Widget interface {
+	Layout(g *gocui.Gui) error
+}
+
+// An embedable widget with the properties required for implementing boxes.
+type widget struct {
 	name string
 	x, y int
 	w, h int
 }
 
 // Layout draws the widget on the screen
-func (w *Widget) Layout(g *gocui.Gui) error {
+func (w *widget) Layout(g *gocui.Gui) error {
 	_, err := g.SetView(w.name, w.x, w.y, w.x+w.w, w.y+w.h)
 	if err != nil && err != gocui.ErrUnknownView {
 		return err
@@ -64,7 +70,7 @@ func (w *Widget) Layout(g *gocui.Gui) error {
 }
 
 // View returns the view associated with the widget
-func (w *Widget) View(g *gocui.Gui) (*gocui.View, error) {
+func (w *widget) View(g *gocui.Gui) (*gocui.View, error) {
 	return g.View(w.name)
 }
 
@@ -74,7 +80,8 @@ func (w *Widget) View(g *gocui.Gui) (*gocui.View, error) {
 
 // Messages implements the message reader interface
 type Messages struct {
-	Widget
+	sync.Mutex
+	widget
 	lines []*pb.ChatMessage
 	users map[string]int
 }
@@ -103,11 +110,14 @@ func (w *Messages) Layout(g *gocui.Gui) error {
 		}
 	}
 
-	// Create the message format string
-	msgFmt := fmt.Sprintf("%%s  %%-%ds %%s", maxLen)
-
 	for _, msg := range w.lines {
+		// Colorize the name of the user
 		name := Colorize(w.users[msg.Sender], "@"+msg.Sender)
+
+		// Create the format string taking into account the color invisibles
+		diff := len(name) - len(msg.Sender)
+		msgFmt := fmt.Sprintf("%%s  %%-%dv %%s", maxLen+diff)
+
 		line := fmt.Sprintf(msgFmt, msg.Timestamp, name, msg.Message)
 		fmt.Fprintln(v, line)
 	}
@@ -116,6 +126,9 @@ func (w *Messages) Layout(g *gocui.Gui) error {
 
 // Append a message to the messages window, limiting the history size.
 func (w *Messages) Append(msg *pb.ChatMessage) (err error) {
+	w.Lock()
+	defer w.Unlock()
+
 	// If user is not in users map, assign a random color
 	if _, ok := w.users[msg.Sender]; !ok {
 		w.users[msg.Sender] = rand.Intn(228) + 1
@@ -168,7 +181,7 @@ func (w *Messages) ScrollDown(g *gocui.Gui, v *gocui.View) error {
 
 // ChatBox implements the editable box to write messages in
 type ChatBox struct {
-	Widget
+	widget
 }
 
 // Layout draws a full width box 4 units high at the bottom of the screen
@@ -211,10 +224,19 @@ func (w *ChatBox) Send(g *gocui.Gui, v *gocui.View) (err error) {
 		return nil
 	}
 
+	// Increment the sequence number and create the message
+	console.sequence++
+
 	msg := &pb.ChatMessage{
-		Sender:    "system",
-		Timestamp: time.Now().Format("15:04:05"),
+		Sequence:  console.sequence,
+		Sender:    console.username,
+		Timestamp: ChatTime(),
 		Message:   line,
+	}
+
+	// Send the message to the chat server
+	if err = console.stream.Send(msg); err != nil {
+		return err
 	}
 
 	// Append the line to the messages view
@@ -231,7 +253,7 @@ func (w *ChatBox) Send(g *gocui.Gui, v *gocui.View) (err error) {
 
 // HelpWidget displays the help text at the bottom of the screen.
 type HelpWidget struct {
-	Widget
+	widget
 	text string
 }
 

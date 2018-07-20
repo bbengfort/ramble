@@ -1,10 +1,11 @@
 package ramble
 
 import (
-	"context"
 	"fmt"
+	"io"
 	"math/rand"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/bbengfort/ramble/pb"
@@ -16,49 +17,27 @@ func init() {
 }
 
 // PackageVersion of the Ramble app
-const PackageVersion = "0.1"
+const PackageVersion = "0.2"
 
-// New ramble service
-func New(name string) *Ramble {
-	return &Ramble{Name: name}
+// NewServer creates a chat server to distribute messages to all streaming
+// clients that connect via gRPC.
+func NewServer(port uint) *Ramble {
+	ramble := &Ramble{port: port}
+	ramble.clients = make(map[string]chan *pb.ChatMessage)
+
+	return ramble
 }
 
 // Ramble implements the RambleService
 type Ramble struct {
-	Name string // name of the local client
-}
-
-// PingService sends a message on a routine tick
-func (r *Ramble) PingService(addr string, delay time.Duration) error {
-	var sequence int64
-	conn, err := grpc.Dial(addr, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("could not connect to %s: %s", addr, err)
-	}
-
-	client := pb.NewRambleClient(conn)
-	stream, err := client.Ping(context.Background())
-	if err != nil {
-		return err
-	}
-
-	ticker := time.NewTicker(delay)
-	for {
-		ts := <-ticker.C
-		sequence++
-		if err = stream.Send(&pb.PingRequest{
-			Sequence: sequence,
-			Sender:   r.Name,
-			Ttl:      30,
-			Payload:  []byte(ts.String()),
-		}); err != nil {
-			return err
-		}
-	}
+	sync.Mutex
+	port    uint
+	clients map[string]chan *pb.ChatMessage
 }
 
 // Listen for chat service messages
-func (r *Ramble) Listen(addr string) error {
+func (r *Ramble) Listen() error {
+	addr := fmt.Sprintf(":%d", r.port)
 	sock, err := net.Listen("tcp", addr)
 	if err != nil {
 		return fmt.Errorf("could not listen on %s", addr)
@@ -67,18 +46,41 @@ func (r *Ramble) Listen(addr string) error {
 
 	srv := grpc.NewServer()
 	pb.RegisterRambleServer(srv, r)
-	go srv.Serve(sock)
-	return nil
+	return srv.Serve(sock)
 }
 
-// Chat handles chat stream clients
+// Chat handles chat stream clients.
 func (r *Ramble) Chat(stream pb.Ramble_ChatServer) error {
-	fmt.Println("hidy ho!")
-	return nil
+	for {
+		in, err := stream.Recv()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+
+		// TODO: send message to everyone else!
+		fmt.Println(in)
+
+		ack := &pb.ChatMessage{
+			Sender:    "system",
+			Timestamp: ChatTime(),
+			Message:   "message received",
+		}
+		if err := stream.Send(ack); err != nil {
+			return err
+		}
+	}
 }
 
 // Ping handles ping stream clients
 func (r *Ramble) Ping(stream pb.Ramble_PingServer) error {
 	fmt.Println("hidy ping!")
 	return nil
+}
+
+// ChatTime returns the current timestamp formatted for the chat window.
+func ChatTime() string {
+	return time.Now().Format("15:04:05")
 }

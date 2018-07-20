@@ -5,32 +5,32 @@ import (
 )
 
 // BindKeys sets the key bindings for the application.
-func BindKeys(g *gocui.Gui) error {
+func (c *Console) BindKeys() error {
 
 	// Exit on CTRL+C
-	if err := g.SetKeybinding("", gocui.KeyCtrlC, gocui.ModNone, quit); err != nil {
+	if err := c.cui.SetKeybinding("", gocui.KeyCtrlC, gocui.ModNone, quit); err != nil {
 		return err
 	}
 
 	// Togle View bindings
 	for _, name := range []string{"", MsgsView, ChatView} {
-		if err := g.SetKeybinding(name, gocui.KeyTab, gocui.ModNone, toggleView); err != nil {
+		if err := c.cui.SetKeybinding(name, gocui.KeyTab, gocui.ModNone, toggleView); err != nil {
 			return err
 		}
 	}
 
 	// Send messages on enter in the chat box
-	if err := g.SetKeybinding(ChatView, gocui.KeyEnter, gocui.ModNone, chatbox.Send); err != nil {
+	if err := c.cui.SetKeybinding(ChatView, gocui.KeyEnter, gocui.ModNone, chatbox.Send); err != nil {
 		return err
 	}
 
 	// Scroll up with cursor up in messages
-	if err := g.SetKeybinding(MsgsView, gocui.KeyArrowUp, gocui.ModNone, messages.ScrollUp); err != nil {
+	if err := c.cui.SetKeybinding(MsgsView, gocui.KeyArrowUp, gocui.ModNone, messages.ScrollUp); err != nil {
 		return err
 	}
 
 	// Scroll down with cursor down in messages
-	if err := g.SetKeybinding(MsgsView, gocui.KeyArrowDown, gocui.ModNone, messages.ScrollDown); err != nil {
+	if err := c.cui.SetKeybinding(MsgsView, gocui.KeyArrowDown, gocui.ModNone, messages.ScrollDown); err != nil {
 		return err
 	}
 
