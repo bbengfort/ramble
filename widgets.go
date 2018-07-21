@@ -234,13 +234,9 @@ func (w *ChatBox) Send(g *gocui.Gui, v *gocui.View) (err error) {
 		Message:   line,
 	}
 
-	// Send the message to the chat server
+	// Send the message to the chat server - but do not append to messages
+	// because the chat will be acknowledged from the server.
 	if err = console.stream.Send(msg); err != nil {
-		return err
-	}
-
-	// Append the line to the messages view
-	if err = messages.Append(msg); err != nil {
 		return err
 	}
 

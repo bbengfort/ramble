@@ -63,7 +63,6 @@ func serve(c *cli.Context) error {
 }
 
 func chat(c *cli.Context) error {
-
 	name := c.String("name")
 	if name == "" {
 		name = ramble.Prompt("Enter username: ")

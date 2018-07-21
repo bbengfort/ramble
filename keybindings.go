@@ -43,6 +43,7 @@ func (c *Console) BindKeys() error {
 
 // Quit the program on CTRL+C
 func quit(g *gocui.Gui, v *gocui.View) error {
+	console.Close()
 	return gocui.ErrQuit
 }
 

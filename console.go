@@ -56,9 +56,20 @@ type Console struct {
 
 // Close the console program and cleanup the screen.
 func (c *Console) Close() {
-	c.stream.CloseSend()
-	c.conn.Close()
-	c.cui.Close()
+	if c.stream != nil {
+		c.stream.CloseSend()
+		c.stream = nil
+	}
+
+	if c.conn != nil {
+		c.conn.Close()
+		c.conn = nil
+	}
+
+	if c.cui != nil {
+		c.cui.Close()
+		c.cui = nil
+	}
 }
 
 // Run the console program's main loop and return any errors.
@@ -66,6 +77,11 @@ func (c *Console) Run() error {
 	if err := c.connect(); err != nil {
 		return err
 	}
+
+	go ShutdownSignal(func() error {
+		c.Close()
+		return nil
+	})
 
 	if err := c.cui.MainLoop(); err != nil && err != gocui.ErrQuit {
 		return err
@@ -76,12 +92,12 @@ func (c *Console) Run() error {
 // Connect to the chat server and create the chat stream
 func (c *Console) connect() (err error) {
 	if c.conn, err = grpc.Dial(c.address, grpc.WithInsecure()); err != nil {
-		return err
+		return fmt.Errorf("could not open connection to %s", c.address)
 	}
 
 	c.client = pb.NewRambleClient(c.conn)
 	if c.stream, err = c.client.Chat(context.Background()); err != nil {
-		return err
+		return fmt.Errorf("could not connect to %s", c.address)
 	}
 
 	// Run the listener function
