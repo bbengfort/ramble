@@ -30,7 +30,7 @@ func init() {
 }
 
 // PackageVersion of the Ramble app
-const PackageVersion = "1.0"
+const PackageVersion = "1.1"
 
 // ServerName is reserved for use by system messages
 const ServerName = "server"
@@ -63,7 +63,7 @@ func (r *Ramble) Listen() error {
 		return fmt.Errorf("could not listen on %s", addr)
 	}
 	defer sock.Close()
-	status("listening for chat messages on %s", addr)
+	status("ramble v%s listening for chat messages on %s", PackageVersion, addr)
 
 	srv := grpc.NewServer()
 	pb.RegisterRambleServer(srv, r)

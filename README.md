@@ -36,4 +36,43 @@ Of course, things get more complicated when deploying a server to run as a long 
 
 ### Ubuntu systemd service
 
-Clone the repository to your `$GOPATH` and change directories into the project directory. If you have already run `go get`, then make sure that the binary in `$GOPATH/bin` is symlinked to `/usr/local/bin/ramble`, otherwise run `make install` to build the binary in this location. 
+Ramble is set up to use systemd, following the instructions from [_GoLang: Running a Go binary as a systemd service on Ubuntu 16.04_](https://fabianlee.org/2017/05/21/golang-running-a-go-binary-as-a-systemd-service-on-ubuntu-16-04/)
+
+Clone the repository to your `$GOPATH` and change directories into the project directory. If you have already run `go get`, then make sure that the binary in `$GOPATH/bin` is symlinked to `/usr/local/bin/ramble`, otherwise run `make install` to build the binary in this location.
+
+After installing ramble, create the ramble service user and move the systemd unit service file to the correct location:
+
+```
+$ sudo useradd ramble -s /sbin/nologin -M
+$ sudo cp conf/ramble.service /lib/systemd/system/
+$ sudo chmod 755 /lib/systemd/system/ramble.service
+```
+
+At this point you should be able to enable the service, start it, then monitor the logs using journalctl.
+
+```
+$ sudo systemctl enable ramble.service
+```
+
+To save the logs using syslog, writing to `/var/log/ramble/ramble.log`, we can configure rsyslog (for more see [_Ubuntu: Enabling syslog on Ubuntu and custom templates_](https://fabianlee.org/2017/05/24/ubuntu-enabling-syslog-on-ubuntu-hosts-and-custom-templates/)). First, edit `/etc/rsyslog.conf` and uncomment the lines below which tell the server to listen for syslog messages on port 514:
+
+```
+module(load="imtcp")
+input(type="imtcp" port="514")
+```
+
+Then create `/etc/rsyslog.d/30-ramble.conf` with the following content:
+
+```
+if $programname == 'ramble' or $syslogtag == 'ramble' then /var/log/ramble/ramble.log
+& stop
+```
+
+Restart the rsyslog service and the ramble service.
+
+```
+$ sudo systemctl restart rsyslog
+$ sudo systemctl restart ramble
+```
+
+You should now see log messages appearing when chats are sent! 
