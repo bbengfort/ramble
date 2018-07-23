@@ -22,6 +22,8 @@ Replacing `username` with the name you wish to be identified as, and `192.168.1.
 
 In order to start chatting, press the `TAB` button to enter the chat window; you can then type your message and press `ENTER` to send it. If you hit tab again, you'll be taken to the message history window, which will allow you to scroll through messages. Note that the chat history only keeps 150 of the most recent messages in memory at a time. To quit, use `CTRL+C`.
 
+![Ramble Chat](https://user-images.githubusercontent.com/745966/43095401-b3b5edf2-8e83-11e8-8824-cb1de9409bd5.png)
+
 ## Running a Server
 
 Running the server is as simple as running:
