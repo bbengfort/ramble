@@ -2,7 +2,7 @@
 
 **A streaming gRPC point to point chat system.**
 
-This app is a quick proof of concept for a bidirectional streaming service using gRPC. The app implements both a chat server and a chat client. Note that this really is only proof of concept code; if you're interested check out `ramble.go` and the protobuf definition in `pb/chat.proto`. Almost everything else is me fumbling around with making a terminal UI. 
+This app is a quick proof of concept for a bidirectional streaming service using gRPC. The app implements both a chat server and a chat client. Note that this really is only proof of concept code; if you're interested check out `ramble.go` and the protobuf definition in `pb/chat.proto`. Almost everything else is me fumbling around with making a terminal UI.
 
 ## Connecting to a Chat
 
@@ -23,6 +23,12 @@ Replacing `username` with the name you wish to be identified as, and `192.168.1.
 In order to start chatting, press the `TAB` button to enter the chat window; you can then type your message and press `ENTER` to send it. If you hit tab again, you'll be taken to the message history window, which will allow you to scroll through messages. Note that the chat history only keeps 150 of the most recent messages in memory at a time. To quit, use `CTRL+C`.
 
 ![Ramble Chat](https://user-images.githubusercontent.com/745966/43095401-b3b5edf2-8e83-11e8-8824-cb1de9409bd5.png)
+
+## Benchmarks
+
+![Benchmark](fixtures/benchmark.png)
+
+Ran the benchmarks with N clients on my MacBook Pro sending 5000 messages to a chat server on Nevis - an Ubuntu server on the local area network. Throughput is defined as the total number of messages sent divided by the time it took all N clients to send all messages, which simultaneously receiving messages from the channel. 
 
 ## Running a Server
 
