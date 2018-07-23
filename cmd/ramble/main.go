@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/bbengfort/ramble"
@@ -50,6 +51,27 @@ func main() {
 				},
 			},
 		},
+		{
+			Name:   "bench",
+			Usage:  "run a benchmark against the chat server",
+			Action: bench,
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "a, addr",
+					Usage: "address of remote to connect to",
+				},
+				cli.IntFlag{
+					Name:  "c, clients",
+					Usage: "number of concurrent clients",
+					Value: 4,
+				},
+				cli.IntFlag{
+					Name:  "m, messages",
+					Usage: "messages per client to send to server",
+					Value: 5000,
+				},
+			},
+		},
 	}
 
 	app.Run(os.Args)
@@ -90,5 +112,20 @@ func chat(c *cli.Context) error {
 		return cli.NewExitError(err.Error(), 1)
 	}
 
+	return nil
+}
+
+func bench(c *cli.Context) error {
+	addr := c.String("addr")
+	if addr == "" {
+		return cli.NewExitError("must specify an address to connect to", 1)
+	}
+
+	bench, err := ramble.NewBenchmark(c.Int("clients"), c.Int("messages"), addr)
+	if err != nil {
+		return cli.NewExitError(err.Error(), 1)
+	}
+
+	fmt.Println(bench.String())
 	return nil
 }

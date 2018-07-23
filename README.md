@@ -2,7 +2,7 @@
 
 **A streaming gRPC point to point chat system.**
 
-This app is a quick proof of concept for a bidirectional streaming service using gRPC. The app implements both a chat server and a chat client.
+This app is a quick proof of concept for a bidirectional streaming service using gRPC. The app implements both a chat server and a chat client. Note that this really is only proof of concept code; if you're interested check out `ramble.go` and the protobuf definition in `pb/chat.proto`. Almost everything else is me fumbling around with making a terminal UI. 
 
 ## Connecting to a Chat
 
@@ -77,4 +77,4 @@ $ sudo systemctl restart rsyslog
 $ sudo systemctl restart ramble
 ```
 
-You should now see log messages appearing when chats are sent! 
+You should now see log messages appearing when chats are sent!
