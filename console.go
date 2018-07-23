@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"os"
 
 	"github.com/bbengfort/ramble/pb"
@@ -108,6 +107,11 @@ func (c *Console) connect() (err error) {
 // Listen for messages from the chat server and write them to the messages box.
 func (c *Console) listen() {
 	for {
+		// The transport has been closed; stop listening
+		if c.stream == nil {
+			return
+		}
+
 		in, err := c.stream.Recv()
 		if err == io.EOF {
 			// No more messages from the server are coming
@@ -117,18 +121,19 @@ func (c *Console) listen() {
 				Message:   Colorize(160, fmt.Sprintf("disconnected from %s", c.address)),
 			}
 		}
-		if err != nil {
-			// Something bad happened, panic!
-			c.Close()
-			log.Fatalf("could not receive chat message: %s", err)
-		}
 
-		if err := messages.Append(in); err != nil {
-			c.Close()
-			log.Fatalf("could not receive chat message: %s", err)
-		}
-
+		// Update the terminal UI with the received message
 		c.cui.Update(func(g *gocui.Gui) error {
+			if err != nil {
+				// Send RECV error to main terminal UI
+				return fmt.Errorf("could not receive chat message: %s", err)
+			}
+
+			// Append message to the view.
+			if err := messages.Append(in); err != nil {
+				return fmt.Errorf("could not append chat message: %s", err)
+			}
+
 			return nil
 		})
 	}

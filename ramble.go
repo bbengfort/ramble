@@ -6,15 +6,27 @@ import (
 	"log"
 	"math/rand"
 	"net"
+	"os"
 	"sync"
 	"time"
 
 	"github.com/bbengfort/ramble/pb"
+	"github.com/bbengfort/x/noplog"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/grpclog"
 )
 
 func init() {
+	// Set the random seed to something different each time.
 	rand.Seed(time.Now().UnixNano())
+
+	// Initialize our debug logging with our prefix
+	SetLogger(log.New(os.Stdout, "[ramble] ", log.Lmicroseconds))
+	cautionCounter = new(counter)
+	cautionCounter.init()
+
+	// Stop the grpc verbose logging
+	grpclog.SetLogger(noplog.New())
 }
 
 // PackageVersion of the Ramble app
@@ -51,6 +63,7 @@ func (r *Ramble) Listen() error {
 		return fmt.Errorf("could not listen on %s", addr)
 	}
 	defer sock.Close()
+	status("listening for chat messages on %s", addr)
 
 	srv := grpc.NewServer()
 	pb.RegisterRambleServer(srv, r)
@@ -66,7 +79,7 @@ func (r *Ramble) Chat(stream pb.Ramble_ChatServer) error {
 		for msg := range messages {
 			if err := stream.Send(msg); err != nil {
 				// Note that we don't really care about send errors
-				log.Printf("could not send msg %d to client %d: %s", msg.Sequence, clientID, err)
+				warn("could not send msg %d to client %d: %s", msg.Sequence, clientID, err)
 			}
 		}
 	}()
@@ -83,7 +96,7 @@ func (r *Ramble) Chat(stream pb.Ramble_ChatServer) error {
 			}
 
 			// Log the error and return it
-			log.Printf("error receiving from client %d: %s", clientID, err)
+			warn("error receiving from client %d: %s", clientID, err)
 			return err
 		}
 
@@ -113,7 +126,7 @@ func (r *Ramble) broadcast(msg *pb.ChatMessage) {
 		send <- msg
 	}
 
-	log.Printf("msg %d from %s: %s", msg.Sequence, msg.Sender, msg.Message)
+	info("msg %d from %s: %s", msg.Sequence, msg.Sender, msg.Message)
 }
 
 // connectClient creates a unique ID and associates it with a message channel
@@ -127,11 +140,12 @@ func (r *Ramble) connectClient() (uint64, chan *pb.ChatMessage) {
 
 	// TODO: Create a synchronized sequence data structure
 	r.sequence++
+	statusMessage := fmt.Sprintf("client %d has connected (%d clients online)", r.clientID, len(r.clients))
 	msg := &pb.ChatMessage{
 		Sequence:  r.sequence,
 		Sender:    ServerName,
 		Timestamp: ChatTime(),
-		Message:   fmt.Sprintf("client %d has connected", r.clientID),
+		Message:   statusMessage,
 	}
 
 	// TODO: This should be a read lock only
@@ -139,7 +153,7 @@ func (r *Ramble) connectClient() (uint64, chan *pb.ChatMessage) {
 		send <- msg
 	}
 
-	log.Printf("client %d connected\n", r.clientID)
+	status(statusMessage)
 	return r.clientID, r.clients[r.clientID]
 }
 
@@ -154,11 +168,12 @@ func (r *Ramble) disconnectClient(clientID uint64) {
 
 	// TODO: Create a synchronized sequence data structure
 	r.sequence++
+	statusMessage := fmt.Sprintf("client %d has disconnected (%d clients online)", clientID, len(r.clients))
 	msg := &pb.ChatMessage{
 		Sequence:  r.sequence,
 		Sender:    ServerName,
 		Timestamp: ChatTime(),
-		Message:   fmt.Sprintf("client %d has disconnected", clientID),
+		Message:   statusMessage,
 	}
 
 	// TODO: This should be a read lock only
@@ -166,5 +181,5 @@ func (r *Ramble) disconnectClient(clientID uint64) {
 		send <- msg
 	}
 
-	log.Printf("client %d disconnected\n", clientID)
+	status(statusMessage)
 }

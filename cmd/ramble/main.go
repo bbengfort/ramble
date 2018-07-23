@@ -26,7 +26,12 @@ func main() {
 				cli.UintFlag{
 					Name:  "p, port",
 					Usage: "port to listen for messages on",
-					Value: 3264,
+					Value: 3265,
+				},
+				cli.UintFlag{
+					Name:  "verbosity",
+					Usage: "verbosity of log statements, lower is more verbose",
+					Value: 2,
 				},
 			},
 		},
@@ -55,6 +60,8 @@ func main() {
 //===========================================================================
 
 func serve(c *cli.Context) error {
+	ramble.SetLogLevel(uint8(c.Uint("verbosity")))
+
 	server := ramble.NewServer(c.Uint("port"))
 	if err := server.Listen(); err != nil {
 		return cli.NewExitError(err.Error(), 1)
